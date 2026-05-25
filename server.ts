@@ -97,15 +97,43 @@ function generateInitialHistory(basePrice: number, timezone: string): IndexHisto
 // Market Status check based on current UTC time
 function isHoliday(id: string, date: Date): boolean {
   try {
-    const kstDateStr = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Seoul',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(date); // outputs "YYYY-MM-DD"
+    if (id === 'kospi' || id === 'kosdaq' || id === 'kospi200') {
+      const kstDateStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date); // outputs "YYYY-MM-DD"
 
-    if ((id === 'kospi' || id === 'kosdaq' || id === 'kospi200') && kstDateStr === '2026-05-25') {
-      return true; // May 25, 2026 is Buddha's Birthday Alternative Holiday in KR (Closed)
+      if (kstDateStr === '2026-05-25') {
+        return true; // May 25, 2026 is Buddha's Birthday Alternative Holiday in KR (Closed)
+      }
+    }
+
+    if (id === 'sp500' || id === 'nasdaq' || id === 'dow') {
+      const estDateStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date);
+
+      if (estDateStr === '2026-05-25') {
+        return true; // May 25, 2026 is Memorial Day in US (Closed)
+      }
+    }
+
+    if (id === 'ftse100') {
+      const gmtDateStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/London',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date);
+
+      if (gmtDateStr === '2026-05-25') {
+        return true; // May 25, 2026 is Spring Bank Holiday in UK (Closed)
+      }
     }
   } catch (e) {
     console.error("Error formatting date for holiday check:", e);
@@ -140,13 +168,21 @@ function getMarketStatus(id: string, now: Date): 'OPEN' | 'CLOSED' | 'UNKNOWN' {
       // EDT (UTC-4) 09:30 - 16:00 -> UTC 13:30 - 20:00 -> 810 to 1200 min
       return (utcMinutes >= 810 && utcMinutes <= 1200) ? 'OPEN' : 'CLOSED';
     case 'hangseng':
-    case 'shanghai':
-      // HKT/CST (UTC+8) 09:30 - 16:00 -> UTC 01:30 - 08:00 -> 90 to 480 min
+      // HKT (UTC+8) 09:30 - 16:00 -> UTC 01:30 - 08:00 -> 90 to 480 min
       return (utcMinutes >= 90 && utcMinutes <= 480) ? 'OPEN' : 'CLOSED';
+    case 'shanghai':
+    case 'csi300':
+      // CST (UTC+8) 09:30 - 15:00 -> UTC 01:30 - 07:00 -> 90 to 420 min
+      return (utcMinutes >= 90 && utcMinutes <= 420) ? 'OPEN' : 'CLOSED';
+    case 'taiwan':
+      // CST (UTC+8) 09:00 - 13:30 -> UTC 01:00 - 05:30 -> 60 to 330 min
+      return (utcMinutes >= 60 && utcMinutes <= 330) ? 'OPEN' : 'CLOSED';
     case 'ftse100':
     case 'dax':
     case 'cac40':
-      // EU DST (UTC+2 / +1) 08:00 - 16:30 local -> UTC 07:00 - 15:30 -> 420 to 930 min
+      // EU DST (Europe/London or Europe/Berlin or Europe/Paris)
+      // BST is UTC+1 (420 to 930 min), CEST is UTC+2 (420 to 930 min)
+      // In both cases, local 08:00 - 16:30 or 09:00 - 17:30 is UTC 07:00 - 15:30
       return (utcMinutes >= 420 && utcMinutes <= 930) ? 'OPEN' : 'CLOSED';
     case 'nifty50':
       // IST (UTC+5.5) 09:15 - 15:30 -> UTC 03:45 - 10:00 -> 225 to 600 min
