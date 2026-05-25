@@ -18,6 +18,7 @@ const indexMetadata: { [key: string]: { timezone: string; openTime: string; clos
   sp500: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   nasdaq: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   dow: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
+  russell2000: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   nikkei225: { timezone: 'Asia/Tokyo', openTime: '09:00', closeTime: '15:00', timezoneLabel: 'JST' },
   hangseng: { timezone: 'Asia/Hong_Kong', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'HKT' },
   shanghai: { timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
@@ -66,6 +67,7 @@ const baselines: Omit<StockIndex, 'history'>[] = [
   { id: 'sp500', name: 'S&P 500', nameKo: 'S&P 500', price: 5250.40, change: 24.15, percentChange: 0.46, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   { id: 'nasdaq', name: 'NASDAQ Composite', nameKo: '나스닥 종합', price: 16450.80, change: 145.20, percentChange: 0.89, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   { id: 'dow', name: 'Dow Jones', nameKo: '다우 존스', price: 39100.10, change: -85.40, percentChange: -0.22, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
+  { id: 'russell2000', name: 'Russell 2000', nameKo: '러셀 2000', price: 2050.30, change: 12.10, percentChange: 0.59, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   { id: 'nikkei225', name: 'Nikkei 225', nameKo: '닛케이 225', price: 38900.50, change: 310.20, percentChange: 0.80, status: 'CLOSED', asOf: '2026-05-25 15:00 JST', region: 'ASIA', timezone: 'Asia/Tokyo', openTime: '09:00', closeTime: '15:00', timezoneLabel: 'JST' },
   { id: 'hangseng', name: 'Hang Seng Index', nameKo: '항셍 지수', price: 18500.10, change: -120.50, percentChange: -0.65, status: 'CLOSED', asOf: '2026-05-25 16:00 HKT', region: 'ASIA', timezone: 'Asia/Hong_Kong', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'HKT' },
   { id: 'shanghai', name: 'Shanghai Composite', nameKo: '상해 종합', price: 3120.30, change: 5.40, percentChange: 0.17, status: 'CLOSED', asOf: '2026-05-25 15:00 CST', region: 'ASIA', timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
@@ -110,7 +112,7 @@ function isHoliday(id: string, date: Date): boolean {
       }
     }
 
-    if (id === 'sp500' || id === 'nasdaq' || id === 'dow') {
+    if (id === 'sp500' || id === 'nasdaq' || id === 'dow' || id === 'russell2000') {
       const estDateStr = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York',
         year: 'numeric',
@@ -165,6 +167,7 @@ function getMarketStatus(id: string, now: Date): 'OPEN' | 'CLOSED' | 'UNKNOWN' {
     case 'sp500':
     case 'nasdaq':
     case 'dow':
+    case 'russell2000':
       // EDT (UTC-4) 09:30 - 16:00 -> UTC 13:30 - 20:00 -> 810 to 1200 min
       return (utcMinutes >= 810 && utcMinutes <= 1200) ? 'OPEN' : 'CLOSED';
     case 'hangseng':
@@ -260,6 +263,7 @@ const symbolToIdMap: { [key: string]: string } = {
   '^GSPC': 'sp500',
   '^IXIC': 'nasdaq',
   '^DJI': 'dow',
+  '^RUT': 'russell2000',
   '^N225': 'nikkei225',
   '^HSI': 'hangseng',
   '000001.SS': 'shanghai',

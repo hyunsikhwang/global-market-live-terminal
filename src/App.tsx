@@ -398,6 +398,7 @@ export default function App() {
       case 'sp500':
       case 'nasdaq':
       case 'dow':
+      case 'russell2000':
         return '🇺🇸';
       case 'nikkei225':
         return '🇯🇵';
