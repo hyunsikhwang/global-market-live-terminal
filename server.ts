@@ -14,6 +14,7 @@ const PORT = 3000;
 const indexMetadata: { [key: string]: { timezone: string; openTime: string; closeTime: string; timezoneLabel: string } } = {
   kospi: { timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
   kosdaq: { timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
+  kospi200: { timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
   sp500: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   nasdaq: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   dow: { timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
@@ -61,6 +62,7 @@ function formatIntradayInTimezone(epochSeconds: number, timezone: string): strin
 const baselines: Omit<StockIndex, 'history'>[] = [
   { id: 'kospi', name: 'KOSPI', nameKo: '코스피', price: 2650.50, change: 12.30, percentChange: 0.47, status: 'CLOSED', asOf: '2026-05-25 15:30 KST', region: 'KR', timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
   { id: 'kosdaq', name: 'KOSDAQ', nameKo: '코스닥', price: 855.20, change: -3.45, percentChange: -0.40, status: 'CLOSED', asOf: '2026-05-25 15:30 KST', region: 'KR', timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
+  { id: 'kospi200', name: 'KOSPI 200', nameKo: '코스피 200', price: 350.20, change: 1.85, percentChange: 0.53, status: 'CLOSED', asOf: '2026-05-25 15:30 KST', region: 'KR', timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
   { id: 'sp500', name: 'S&P 500', nameKo: 'S&P 500', price: 5250.40, change: 24.15, percentChange: 0.46, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   { id: 'nasdaq', name: 'NASDAQ Composite', nameKo: '나스닥 종합', price: 16450.80, change: 145.20, percentChange: 0.89, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
   { id: 'dow', name: 'Dow Jones', nameKo: '다우 존스', price: 39100.10, change: -85.40, percentChange: -0.22, status: 'CLOSED', asOf: '2026-05-22 16:00 EDT', region: 'US', timezone: 'America/New_York', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'EDT' },
@@ -102,7 +104,7 @@ function isHoliday(id: string, date: Date): boolean {
       day: '2-digit'
     }).format(date); // outputs "YYYY-MM-DD"
 
-    if ((id === 'kospi' || id === 'kosdaq') && kstDateStr === '2026-05-25') {
+    if ((id === 'kospi' || id === 'kosdaq' || id === 'kospi200') && kstDateStr === '2026-05-25') {
       return true; // May 25, 2026 is Buddha's Birthday Alternative Holiday in KR (Closed)
     }
   } catch (e) {
@@ -126,6 +128,7 @@ function getMarketStatus(id: string, now: Date): 'OPEN' | 'CLOSED' | 'UNKNOWN' {
   switch (id) {
     case 'kospi':
     case 'kosdaq':
+    case 'kospi200':
       // KST (UTC+9) 09:00 - 15:30 -> UTC 00:00 - 06:30 -> 0 to 390 min
       return (utcMinutes >= 0 && utcMinutes <= 390) ? 'OPEN' : 'CLOSED';
     case 'nikkei225':
@@ -217,6 +220,7 @@ function simulateWalkingState() {
 const symbolToIdMap: { [key: string]: string } = {
   '^KS11': 'kospi',
   '^KQ11': 'kosdaq',
+  '^KS200': 'kospi200',
   '^GSPC': 'sp500',
   '^IXIC': 'nasdaq',
   '^DJI': 'dow',

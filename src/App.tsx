@@ -393,6 +393,7 @@ export default function App() {
     switch (id) {
       case 'kospi':
       case 'kosdaq':
+      case 'kospi200':
         return '🇰🇷';
       case 'sp500':
       case 'nasdaq':
@@ -441,12 +442,8 @@ export default function App() {
             <div className="flex items-center gap-2">
               <span className="bg-amber-600/60 text-xs text-amber-50 rounded-full px-2 py-0.5 font-semibold shrink-0 animate-pulse">시뮬레이션 가동 중</span>
               <p className="font-medium">
-                Gemini API 인증키가 연결되지 않아 live 시뮬레이션으로 가격 변동이 일어납니다. 실시간 구글 검색(Gemini Grounding) 연결 시 더욱 정확한 지표가 적용됩니다.
+                실시간 야후 파이낸스 데이터 갱신에 오류가 발생하여 실시간 가격 예측 시뮬레이션 지표를 적용하고 있습니다.
               </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs bg-black/15 px-3 py-1 rounded border border-white/20">
-              <span className="font-mono">GEMINI_API_KEY</span>
-              <span>설정 필요</span>
             </div>
           </div>
         </div>
