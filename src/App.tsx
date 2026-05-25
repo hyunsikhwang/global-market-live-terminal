@@ -308,8 +308,8 @@ export default function App() {
     const max = Math.max(...prices);
     const range = max - min === 0 ? 1 : max - min;
     
-    return drawingPoints.map((p) => {
-      const fraction = getTimeFraction(p.time, openTime, closeTime);
+    return drawingPoints.map((p, idx) => {
+      const fraction = drawingPoints.length > 1 ? idx / (drawingPoints.length - 1) : 0.5;
       const x = fraction * width;
       const y = height - ((p.price - min) / range) * height;
       return `${x},${y}`;
@@ -357,18 +357,9 @@ export default function App() {
     const xCoord = e.clientX - rect.left;
     const xFraction = Math.max(0, Math.min(1, xCoord / rect.width));
     
-    // Find the closest point in history based on session hours fraction
-    let closestIndex = 0;
-    let minDiff = Infinity;
-    
-    bigChartDetails.points.forEach((p, idx) => {
-      const ptFraction = getTimeFraction(p.time, activeIndex.openTime, activeIndex.closeTime);
-      const diff = Math.abs(ptFraction - xFraction);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestIndex = idx;
-      }
-    });
+    // With even index spacing, finding the closest point index is precise and instant
+    const totalPoints = bigChartDetails.points.length;
+    const closestIndex = Math.max(0, Math.min(totalPoints - 1, Math.round(xFraction * (totalPoints - 1))));
     
     if (closestIndex !== hoveredIndex) {
       setHoveredIndex(closestIndex);
@@ -793,26 +784,26 @@ export default function App() {
                               </linearGradient>
                             </defs>
 
-                            {/* Polygon Filled Area Proportionally spaced using local market session */}
+                            {/* Polygon Filled Area - evenly spaced */}
                             <path
                               d={`
                                 M 0,160
-                                ${bigChartDetails.points.map((p) => {
-                                  const fraction = getTimeFraction(p.time, activeIndex.openTime, activeIndex.closeTime);
+                                ${bigChartDetails.points.map((p, idx) => {
+                                  const fraction = bigChartDetails.points.length > 1 ? idx / (bigChartDetails.points.length - 1) : 0.5;
                                   const x = fraction * 360;
                                   const y = 160 - ((p.price - bigChartDetails.yMin) / bigChartDetails.spread) * 120 - 10;
                                   return `L ${x},${y}`;
                                 }).join(' ')}
-                                L ${(bigChartDetails.points.length > 0 ? getTimeFraction(bigChartDetails.points[bigChartDetails.points.length - 1].time, activeIndex.openTime, activeIndex.closeTime) : 1) * 360},160 Z
+                                L 360,160 Z
                               `}
                               fill="url(#chart-area-grad)"
                               className="transition-all duration-300"
                             />
 
-                            {/* Polyline main value path */}
+                            {/* Polyline main value path - evenly spaced */}
                             <path
                               d={bigChartDetails.points.map((p, idx) => {
-                                const fraction = getTimeFraction(p.time, activeIndex.openTime, activeIndex.closeTime);
+                                const fraction = bigChartDetails.points.length > 1 ? idx / (bigChartDetails.points.length - 1) : 0.5;
                                 const x = fraction * 360;
                                 const y = 160 - ((p.price - bigChartDetails.yMin) / bigChartDetails.spread) * 120 - 10;
                                 return `${idx === 0 ? 'M' : 'L'} ${x},${y}`;
@@ -824,9 +815,9 @@ export default function App() {
                               strokeLinejoin="round"
                             />
 
-                            {/* Dynamic Hover Point Cursor */}
+                            {/* Dynamic Hover Point Cursor - evenly spaced */}
                             {hoveredIndex !== null && (() => {
-                              const fraction = getTimeFraction(bigChartDetails.points[hoveredIndex].time, activeIndex.openTime, activeIndex.closeTime);
+                              const fraction = bigChartDetails.points.length > 1 ? hoveredIndex / (bigChartDetails.points.length - 1) : 0.5;
                               const ptX = fraction * 360;
                               const ptY = 160 - ((bigChartDetails.points[hoveredIndex].price - bigChartDetails.yMin) / bigChartDetails.spread) * 120 - 10;
                               return (
