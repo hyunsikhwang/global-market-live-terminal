@@ -18,6 +18,84 @@ import {
 } from 'lucide-react';
 import { StockIndex, MarketIndexResponse, IndexRegion, IndexHistoryPoint } from './types';
 
+// Helper to get local date components in a timezone
+const getPartsInTimezone = (timezone: string, date: Date) => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    const formatted = formatter.format(date);
+    const match = formatted.match(/(\d{4})-(\d{2})-(\d{2}),?\s+(\d{2}):(\d{2}):(\d{2})/);
+    if (match) {
+      return {
+        year: parseInt(match[1]),
+        month: parseInt(match[2]),
+        day: parseInt(match[3]),
+        hour: parseInt(match[4]),
+        minute: parseInt(match[5]),
+        second: parseInt(match[6])
+      };
+    }
+  } catch (e) {
+    console.error(`Error formatting parts for ${timezone}:`, e);
+  }
+  return null;
+};
+
+// Helper to check if a day is weekend in the target timezone
+const isWeekendInTimezone = (timezone: string, date: Date): boolean => {
+  const parts = getPartsInTimezone(timezone, date);
+  if (!parts) return false;
+  const localDate = new Date(parts.year, parts.month - 1, parts.day);
+  const day = localDate.getDay();
+  return day === 0 || day === 6;
+};
+
+// Helper to construct absolute local Date in target timezone with a daily offset
+const getAbsoluteDateInTimezone = (timezone: string, hhmm: string, baseTime: Date, daysOffset: number = 0): Date => {
+  const parts = getPartsInTimezone(timezone, baseTime);
+  if (!parts) return baseTime;
+
+  const [h, m] = hhmm.split(':').map(Number);
+  const localUtc = Date.UTC(parts.year, parts.month - 1, parts.day + daysOffset, h, m, 0);
+  
+  const testDate = new Date(localUtc);
+  const testParts = getPartsInTimezone(timezone, testDate);
+  if (testParts) {
+    const testLocalUtc = Date.UTC(testParts.year, testParts.month - 1, testParts.day, testParts.hour, testParts.minute, 0);
+    const offsetMs = testLocalUtc - localUtc;
+    return new Date(localUtc - offsetMs);
+  }
+  return baseTime;
+};
+
+// Helper to find the soonest upcoming open time
+const getNextOpenTime = (timezone: string, openTime: string, baseTime: Date): Date => {
+  for (let d = 0; d <= 7; d++) {
+    const candidate = getAbsoluteDateInTimezone(timezone, openTime, baseTime, d);
+    if (candidate.getTime() > baseTime.getTime()) {
+      if (!isWeekendInTimezone(timezone, candidate)) {
+        const parts = getPartsInTimezone(timezone, candidate);
+        if (parts) {
+          const dateStr = `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+          if (timezone === 'Asia/Seoul' && dateStr === '2026-05-25') continue;
+          if (timezone === 'America/New_York' && dateStr === '2026-05-25') continue;
+          if (timezone === 'Europe/London' && dateStr === '2026-05-25') continue;
+        }
+        return candidate;
+      }
+    }
+  }
+  return getAbsoluteDateInTimezone(timezone, openTime, baseTime, 1);
+};
+
 export default function App() {
   const [data, setData] = useState<MarketIndexResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -94,7 +172,7 @@ export default function App() {
     return data.indices.find(idx => idx.id === selectedId) || data.indices[0];
   }, [data, selectedId]);
 
-  // Region filtering & Search & Sorting (OPEN markets first)
+  // Region filtering & Search & Sorting
   const filteredIndices = useMemo(() => {
     if (!data || !data.indices) return [];
     
@@ -107,16 +185,30 @@ export default function App() {
       return matchRegion && matchSearch;
     });
 
-    // Sort: OPEN markets first
+    // Sort criteria:
+    // 1. OPEN first, CLOSED later
+    // 2. In OPEN group: Sort from transition to OPEN earliest (first opened first)
+    // 3. In CLOSED group: Sort from transition to OPEN soonest (next opening first)
     return [...matched].sort((a, b) => {
-      const aOpen = a.status === 'OPEN' ? 1 : 0;
-      const bOpen = b.status === 'OPEN' ? 1 : 0;
+      const aOpen = a.status === 'OPEN';
+      const bOpen = b.status === 'OPEN';
       if (aOpen !== bOpen) {
-        return bOpen - aOpen; // 1 (OPEN) comes before 0 (CLOSED)
+        return aOpen ? -1 : 1; // OPEN comes first
       }
-      return 0;
+      
+      if (aOpen) {
+        // Both are OPEN: Sort by earlier open time (first opened first)
+        const openA = getAbsoluteDateInTimezone(a.timezone, a.openTime, systemTime, 0).getTime();
+        const openB = getAbsoluteDateInTimezone(b.timezone, b.openTime, systemTime, 0).getTime();
+        return openA - openB;
+      } else {
+        // Both are CLOSED: Sort by soonest upcoming open time
+        const nextA = getNextOpenTime(a.timezone, a.openTime, systemTime).getTime();
+        const nextB = getNextOpenTime(b.timezone, b.openTime, systemTime).getTime();
+        return nextA - nextB;
+      }
     });
-  }, [data, selectedRegion, searchQuery]);
+  }, [data, selectedRegion, searchQuery, systemTime]);
 
   // Color-coded helper class generators
   const getTrendClasses = (change: number) => {
@@ -291,12 +383,44 @@ export default function App() {
 
   // Convert status to Korean label
   const getStatusLabel = (status: 'OPEN' | 'CLOSED' | 'UNKNOWN') => {
-    if (status === 'OPEN') return { text: '정규장', style: 'bg-emerald-500 text-emerald-900 border-emerald-200' };
+    if (status === 'OPEN') return { text: '정규장', style: 'bg-emerald-550 text-white font-bold bg-emerald-500 border-emerald-300 shadow-sm shadow-emerald-500/20' };
     if (status === 'CLOSED') return { text: '장마감', style: 'bg-slate-100 text-slate-700 border-slate-200' };
     return { text: '세션대기', style: 'bg-amber-100 text-amber-800 border-amber-200' };
   };
 
-  // Get index region flag emoji and name
+  // Get index country flag emoji based on exact index ID
+  const getIndexFlag = (id: string): string => {
+    switch (id) {
+      case 'kospi':
+      case 'kosdaq':
+        return '🇰🇷';
+      case 'sp500':
+      case 'nasdaq':
+      case 'dow':
+        return '🇺🇸';
+      case 'nikkei225':
+        return '🇯🇵';
+      case 'hangseng':
+        return '🇭🇰';
+      case 'shanghai':
+      case 'csi300':
+        return '🇨🇳';
+      case 'taiwan':
+        return '🇹🇼';
+      case 'ftse100':
+        return '🇬🇧';
+      case 'dax':
+        return '🇩🇪';
+      case 'cac40':
+        return '🇫🇷';
+      case 'nifty50':
+        return '🇮🇳';
+      default:
+        return '🌐';
+    }
+  };
+
+  // Get index region label and generic flag
   const getRegionLabel = (region: string) => {
     switch (region) {
       case 'KR': return { flag: '🇰🇷', label: '대한민국' };
@@ -494,20 +618,25 @@ export default function App() {
                   const statusVal = getStatusLabel(index.status);
                   const regionVal = getRegionLabel(index.region);
 
+                  const isOpen = index.status === 'OPEN';
+                  const borderClass = isSelected
+                    ? (isOpen 
+                        ? 'ring-2 ring-indigo-600 border-transparent bg-emerald-50/10 shadow-[0_0_15px_rgba(16,185,129,0.22)]' 
+                        : 'ring-2 ring-indigo-600 border-transparent bg-indigo-50/5')
+                    : (isOpen
+                        ? 'border-emerald-300 bg-emerald-50/5 hover:border-emerald-400 hover:bg-emerald-50/10 shadow-[0_2px_8px_rgba(16,185,129,0.08)] hover:shadow-md'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md');
+
                   return (
                     <div
                       key={index.id}
                       onClick={() => setSelectedId(index.id)}
-                      className={`relative bg-white rounded-xl border transition-all duration-150 p-3.5 cursor-pointer shadow-sm ${
-                        isSelected 
-                          ? 'ring-2 ring-indigo-600 border-transparent bg-indigo-50/5' 
-                          : 'border-slate-200/80 hover:border-slate-300 hover:shadow-md'
-                      }`}
+                      className={`relative rounded-xl border transition-all duration-150 p-3.5 cursor-pointer shadow-sm ${borderClass}`}
                     >
                       {/* Flex Top Row */}
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-base leading-none shrink-0">{regionVal.flag}</span>
+                          <span className="text-base leading-none shrink-0">{getIndexFlag(index.id)}</span>
                           <span className="font-bold text-xs text-slate-800 tracking-tight truncate">
                             {index.nameKo}
                           </span>
@@ -578,14 +707,15 @@ export default function App() {
                       지수 정밀 분석
                     </span>
                     <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="text-lg font-bold font-display">
+                      <h3 className="text-lg font-bold font-display flex items-center gap-1.5">
+                        <span className="text-xl leading-none">{getIndexFlag(activeIndex.id)}</span>
                         {activeIndex.nameKo}
                       </h3>
                       <span className="text-xs text-slate-400 font-mono uppercase font-semibold">
                         {activeIndex.id.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-xs mt-0.5 truncate">
+                    <p className="text-slate-400 text-xs mt-0.5 truncate pl-7">
                       {activeIndex.name} • {getRegionLabel(activeIndex.region).label}
                     </p>
                   </div>

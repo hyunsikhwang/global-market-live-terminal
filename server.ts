@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
 import { StockIndex, IndexHistoryPoint, MarketIndexResponse } from "./src/types";
 
 dotenv.config();
@@ -11,23 +10,6 @@ const app = express();
 app.use(express.json());
 
 const PORT = 3000;
-
-// Initialize Google GenAI configuration client
-const apiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
-if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
-  console.log("Initializing Gemini Client with API key...");
-  ai = new GoogleGenAI({
-    apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-} else {
-  console.warn("GEMINI_API_KEY not found or is placeholder. Using real-time simulation module.");
-}
 
 const indexMetadata: { [key: string]: { timezone: string; openTime: string; closeTime: string; timezoneLabel: string } } = {
   kospi: { timezone: 'Asia/Seoul', openTime: '09:00', closeTime: '15:30', timezoneLabel: 'KST' },
@@ -38,6 +20,7 @@ const indexMetadata: { [key: string]: { timezone: string; openTime: string; clos
   nikkei225: { timezone: 'Asia/Tokyo', openTime: '09:00', closeTime: '15:00', timezoneLabel: 'JST' },
   hangseng: { timezone: 'Asia/Hong_Kong', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'HKT' },
   shanghai: { timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
+  csi300: { timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
   taiwan: { timezone: 'Asia/Taipei', openTime: '09:00', closeTime: '13:30', timezoneLabel: 'CST' },
   ftse100: { timezone: 'Europe/London', openTime: '08:00', closeTime: '16:30', timezoneLabel: 'BST' },
   dax: { timezone: 'Europe/Berlin', openTime: '09:00', closeTime: '17:30', timezoneLabel: 'CEST' },
@@ -84,6 +67,7 @@ const baselines: Omit<StockIndex, 'history'>[] = [
   { id: 'nikkei225', name: 'Nikkei 225', nameKo: '닛케이 225', price: 38900.50, change: 310.20, percentChange: 0.80, status: 'CLOSED', asOf: '2026-05-25 15:00 JST', region: 'ASIA', timezone: 'Asia/Tokyo', openTime: '09:00', closeTime: '15:00', timezoneLabel: 'JST' },
   { id: 'hangseng', name: 'Hang Seng Index', nameKo: '항셍 지수', price: 18500.10, change: -120.50, percentChange: -0.65, status: 'CLOSED', asOf: '2026-05-25 16:00 HKT', region: 'ASIA', timezone: 'Asia/Hong_Kong', openTime: '09:30', closeTime: '16:00', timezoneLabel: 'HKT' },
   { id: 'shanghai', name: 'Shanghai Composite', nameKo: '상해 종합', price: 3120.30, change: 5.40, percentChange: 0.17, status: 'CLOSED', asOf: '2026-05-25 15:00 CST', region: 'ASIA', timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
+  { id: 'csi300', name: 'CSI 300', nameKo: 'CSI 300 (중국)', price: 3624.50, change: 18.25, percentChange: 0.51, status: 'CLOSED', asOf: '2026-05-25 15:00 CST', region: 'ASIA', timezone: 'Asia/Shanghai', openTime: '09:30', closeTime: '15:00', timezoneLabel: 'CST' },
   { id: 'taiwan', name: 'Taiwan Weighted', nameKo: '대만 가권', price: 21500.50, change: 180.20, percentChange: 0.84, status: 'CLOSED', asOf: '2026-05-25 13:30 CST', region: 'ASIA', timezone: 'Asia/Taipei', openTime: '09:00', closeTime: '13:30', timezoneLabel: 'CST' },
   { id: 'ftse100', name: 'FTSE 100', nameKo: 'FTSE 100 (영국)', price: 8350.20, change: 42.10, percentChange: 0.51, status: 'CLOSED', asOf: '2026-05-22 16:30 BST', region: 'EU', timezone: 'Europe/London', openTime: '08:00', closeTime: '16:30', timezoneLabel: 'BST' },
   { id: 'dax', name: 'DAX', nameKo: 'DAX (독일)', price: 18700.40, change: 110.30, percentChange: 0.59, status: 'CLOSED', asOf: '2026-05-22 17:30 CEST', region: 'EU', timezone: 'Europe/Berlin', openTime: '09:00', closeTime: '17:30', timezoneLabel: 'CEST' },
@@ -239,6 +223,7 @@ const symbolToIdMap: { [key: string]: string } = {
   '^N225': 'nikkei225',
   '^HSI': 'hangseng',
   '000001.SS': 'shanghai',
+  '000300.SS': 'csi300',
   '^TWII': 'taiwan',
   '^FTSE': 'ftse100',
   '^GDAXI': 'dax',
