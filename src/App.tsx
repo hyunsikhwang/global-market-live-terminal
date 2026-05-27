@@ -393,38 +393,54 @@ export default function App() {
     return { text: '세션대기', style: 'bg-amber-100 text-amber-800 border-amber-200' };
   };
 
-  // Get index country flag emoji based on exact index ID
-  const getIndexFlag = (id: string): string => {
+  // Helper to get ISO 3166-1 alpha-2 country code for flags
+  const getCountryCode = (id: string): string | null => {
     switch (id) {
       case 'kospi':
       case 'kosdaq':
       case 'kospi200':
-        return '🇰🇷';
+        return 'kr';
       case 'sp500':
       case 'nasdaq':
       case 'dow':
       case 'russell2000':
-        return '🇺🇸';
+        return 'us';
       case 'nikkei225':
-        return '🇯🇵';
+        return 'jp';
       case 'hangseng':
-        return '🇭🇰';
+        return 'hk';
       case 'shanghai':
       case 'csi300':
-        return '🇨🇳';
+        return 'cn';
       case 'taiwan':
-        return '🇹🇼';
+        return 'tw';
       case 'ftse100':
-        return '🇬🇧';
+        return 'gb';
       case 'dax':
-        return '🇩🇪';
+        return 'de';
       case 'cac40':
-        return '🇫🇷';
+        return 'fr';
       case 'nifty50':
-        return '🇮🇳';
+        return 'in';
       default:
-        return '🌐';
+        return null;
     }
+  };
+
+  // Get index country flag as React Node (uses high quality SVG flags from flagcdn to support Windows and all other platforms)
+  const getIndexFlag = (id: string): React.ReactNode => {
+    const code = getCountryCode(id);
+    if (code) {
+      return (
+        <img
+          src={`https://flagcdn.com/${code}.svg`}
+          alt={code.toUpperCase()}
+          className="w-4.5 h-3.2 object-cover rounded-[1px] border border-black/15 inline-block align-middle shadow-sm shrink-0 mr-1"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+    return <span className="inline-block align-middle leading-none mr-1">🌐</span>;
   };
 
   // Get index region label and generic flag
@@ -559,17 +575,57 @@ export default function App() {
               <button
                 key={region}
                 onClick={() => setSelectedRegion(region)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedRegion === region 
                     ? 'bg-indigo-600 text-white shadow' 
                     : 'text-slate-600 hover:text-indigo-600 hover:bg-white/50'
                 }`}
               >
-                {region === 'ALL' && '🌎 전체'}
-                {region === 'KR' && '🇰🇷 한국'}
-                {region === 'US' && '🇺🇸 미국'}
-                {region === 'ASIA' && '🌏 아시아'}
-                {region === 'EU' && '🇪🇺 유럽'}
+                {region === 'ALL' && (
+                  <>
+                    <span className="text-sm leading-none">🌎</span>
+                    <span>전체</span>
+                  </>
+                )}
+                {region === 'KR' && (
+                  <>
+                    <img
+                      src="https://flagcdn.com/kr.svg"
+                      alt="KR"
+                      className="w-4.5 h-3.2 object-cover rounded-[1px] border border-black/10 shadow-sm shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span>한국</span>
+                  </>
+                )}
+                {region === 'US' && (
+                  <>
+                    <img
+                      src="https://flagcdn.com/us.svg"
+                      alt="US"
+                      className="w-4.5 h-3.2 object-cover rounded-[1px] border border-black/10 shadow-sm shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span>미국</span>
+                  </>
+                )}
+                {region === 'ASIA' && (
+                  <>
+                    <span className="text-sm leading-none">🌏</span>
+                    <span>아시아</span>
+                  </>
+                )}
+                {region === 'EU' && (
+                  <>
+                    <img
+                      src="https://flagcdn.com/eu.svg"
+                      alt="EU"
+                      className="w-4.5 h-3.2 object-cover rounded-[1px] border border-black/10 shadow-sm shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span>유럽</span>
+                  </>
+                )}
               </button>
             ))}
           </div>
